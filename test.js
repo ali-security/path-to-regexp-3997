@@ -9,7 +9,28 @@ describe('path-to-regexp', function () {
   });
 
   it('should generate a regex without backtracking', function () {
-    assert.deepEqual(pathToRegExp('/:a-:b'), /^(?:\/([^/]+?))-(?:((?:(?!\/|-).)+?))\/?$/i);
+    var nodeVersion = process.versions.node;
+    var versionParts = nodeVersion.split('.');
+    var major = parseInt(versionParts[0], 10);
+    var minor = parseInt(versionParts[1], 10);
+
+    var expected;
+    if (major === 0 && minor <= 12) {
+      expected = new RegExp("^(?:\/([^/]+?))-(?:((?:(?!\/|-).)+?))\/?$", "i");
+    } else {
+      expected = /^(?:\/([^/]+?))-(?:((?:(?!\/|-).)+?))\/?$/i;
+    };
+
+    assert.deepEqual(pathToRegExp('/:a-:b'), expected);
+  });
+
+  // See: https://github.com/pillarjs/path-to-regexp/security/advisories/GHSA-37ch-88jc-xwx2
+  it('should generate a regex without backtracking for 3+ params', function () {
+    var re = pathToRegExp('/:a-:b-:c-:d');
+    var input = '/' + Array(4001).join('a-') + '/z';
+    var start = Date.now();
+    re.exec(input);
+    assert.ok(Date.now() - start < 1000, 'ReDoS: regex took too long');
   });
 
   describe('strings', function () {
